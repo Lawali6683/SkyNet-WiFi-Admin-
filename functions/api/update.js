@@ -75,8 +75,11 @@ export async function onRequest(context) {
         }
       });
     });
-    const supabaseUrl = env.SUPABASE_URL.replace(/\/$/, '');
-    const targetUrl = `${supabaseUrl}/rest/v1/pricing_plans`;
+    let supabaseUrl = env.SUPABASE_URL.replace(/\/$/, '');
+    if (!supabaseUrl.endsWith('/rest/v1')) {
+      supabaseUrl += '/rest/v1';
+    }
+    const targetUrl = `${supabaseUrl}/pricing_plans?on_conflict=id`;
     const supabaseResponse = await fetch(targetUrl, {
       method: 'POST',
       headers: {
@@ -89,8 +92,14 @@ export async function onRequest(context) {
     });
     if (!supabaseResponse.ok) {
       const errorData = await supabaseResponse.text();
-      return new Response(JSON.stringify({ message: 'Supabase Sync Failed', details: errorData }), {
-        status: 500,
+      let parsedError;
+      try {
+        parsedError = JSON.parse(errorData);
+      } catch (e) {
+        parsedError = errorData;
+      }
+      return new Response(JSON.stringify({ message: 'Supabase Sync Failed', details: parsedError }), {
+        status: supabaseResponse.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
