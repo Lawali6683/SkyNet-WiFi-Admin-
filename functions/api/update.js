@@ -4,27 +4,43 @@ export default {
       'https://skynetwifiadmin.pages.dev',
       'http://localhost:8080'
     ];
-    
+
     const origin = request.headers.get('Origin');
+    let currentOrigin = allowedOrigins[0];
+    
+    
+    if (origin) {
+      const normalizedOrigin = origin.replace(/\/$/, '');
+      if (allowedOrigins.map(o => o.replace(/\/$/, '')).includes(normalizedOrigin)) {
+        currentOrigin = origin;
+      } else {
+        
+        if (request.method !== 'OPTIONS') {
+          return new Response(JSON.stringify({ message: 'Forbidden Origin' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+    }
+
+   
     const corsHeaders = {
+      'Access-Control-Allow-Origin': currentOrigin,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, X-API-Password',
       'Access-Control-Max-Age': '86400',
     };
 
-    if (allowedOrigins.includes(origin)) {
-      corsHeaders['Access-Control-Allow-Origin'] = origin;
-    } else if (origin) {
-      return new Response(JSON.stringify({ message: 'Forbidden Origin' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' }
+    
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { 
+        status: 200, 
+        headers: corsHeaders 
       });
     }
 
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders });
-    }
-
+    
     if (request.method !== 'POST') {
       return new Response(JSON.stringify({ message: 'Method Not Allowed' }), {
         status: 405,
@@ -33,6 +49,7 @@ export default {
     }
 
     try {
+      
       const inboundPassword = request.headers.get('X-API-Password');
       if (!inboundPassword || inboundPassword !== env.API_PASSWORD) {
         return new Response(JSON.stringify({ message: 'Unauthorized Access' }), {
@@ -50,7 +67,8 @@ export default {
       }
 
       const flattenedPayload = [];
-
+      
+      
       flattenedPayload.push({
         id: 'plan_1',
         plan_data: {
@@ -62,6 +80,7 @@ export default {
         }
       });
 
+     
       body.plan_2.forEach(item => {
         flattenedPayload.push({
           id: `plan_2_${item.sn}`,
@@ -75,6 +94,7 @@ export default {
         });
       });
 
+      
       const supabaseUrl = env.SUPABASE_URL.replace(/\/$/, '');
       const targetUrl = `${supabaseUrl}/rest/v1/pricing_plans`;
 
@@ -84,7 +104,7 @@ export default {
           'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
           'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
           'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates'
+          'Prefer': 'resolution=merge-duplicates' 
         },
         body: JSON.stringify(flattenedPayload)
       });
