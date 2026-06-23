@@ -57,10 +57,10 @@ export async function onRequest(context) {
       id: 'plan_1',
       plan_data: {
         plan_name: 'Plan 1',
-        price: parseInt(body.plan_1.price),
-        validity: 'Unlimited',
-        speed: 'Standard',
-        limitation: 'Changeable Base Plan'
+        sub_plans: [
+          { size: '500 MB', price: parseInt(body.plan_1.p500) },
+          { size: '1 GB', price: parseInt(body.plan_1.p1gb) }
+        ]
       }
     });
     body.plan_2.forEach(item => {
@@ -92,14 +92,8 @@ export async function onRequest(context) {
     });
     if (!supabaseResponse.ok) {
       const errorData = await supabaseResponse.text();
-      let parsedError;
-      try {
-        parsedError = JSON.parse(errorData);
-      } catch (e) {
-        parsedError = errorData;
-      }
-      return new Response(JSON.stringify({ message: 'Supabase Sync Failed', details: parsedError }), {
-        status: supabaseResponse.status,
+      return new Response(JSON.stringify({ message: 'Supabase Sync Failed', details: errorData }), {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
